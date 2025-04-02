@@ -1,0 +1,36 @@
+/* Custom styles for the dashboard */
+.metric-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+}
+
+.alert-card {
+    border-left: 4px solid;
+    margin-bottom: 10px;
+    transition: background-color 0.2s;
+}
+
+.alert-card:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+.alert-info { border-color: #0dcaf0; }
+.alert-warning { border-color: #ffc107; }
+.alert-danger { border-color: #dc3545; }
+
+.system-status {
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}

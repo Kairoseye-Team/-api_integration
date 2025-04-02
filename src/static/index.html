@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Integration Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Integration Demo</h1>
+    <div>
+        <h3>Sample Data:</h3>
+        <textarea id="data">{
+    "metrics": {
+        "response_times": [150, 200, 180],
+        "error_rates": [0.02, 0.03, 0.01],
+        "request_rate": 100
+    },
+    "alerts": [
+        {
+            "title": "High Latency",
+            "message": "Response time exceeded threshold",
+            "severity": "warning"
+        }
+    ]
+}</textarea>
+        <br>
+        <button onclick="analyze()">Analyze Data</button>
+    </div>
+    <div id="result"></div>
+
+    <script>
+        async function analyze() {
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: document.getElementById('data').value
+                });
+                const result = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

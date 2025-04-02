@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f8f9fa; }
+        .metric-card {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            background-color: white;
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        .alert-card {
+            border-left: 4px solid;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .alert-card:hover {
+            transform: translateX(5px);
+        }
+        .alert-info { border-color: #0dcaf0; }
+        .alert-warning { border-color: #ffc107; }
+        .alert-danger { border-color: #dc3545; }
+        .status-badge {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">API Monitoring Dashboard</span>
+            <div class="d-flex align-items-center">
+                <span class="text-light me-3" id="lastUpdate"></span>
+                <button class="btn btn-outline-light btn-sm" onclick="toggleAutoRefresh()">
+                    <span id="refreshStatus">Auto-refresh: ON</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- System Status -->
+            <div class="col-md-12 mb-4">
+                <div class="card metric-card">
+                    <div class="card-body">
+                        <h5 class="card-title">System Status</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="alert mb-0" id="elasticStatus">
+                                    <div class="d-flex align-items-center">
+                                        <div class="status-indicator me-2"></div>
+                                        Elasticsearch: <span class="badge bg-secondary ms-2">Checking...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="alert mb-0" id="snsStatus">
+                                    <div class="d-flex align-items-center">
+                                        <div class="status-indicator me-2"></div>
+                                        AWS SNS: <span class="badge bg-secondary ms-2">Checking...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="alert mb-0" id="requestRate">
+                                    <div class="metric-label">Requests/min</div>
+                                    <div class="metric-value">-</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="alert mb-0" id="errorRate">
+                                    <div class="metric-label">Error Rate</div>
+                                    <div class="metric-value">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Time Chart -->
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Response Times (ms)</h5>
+                        <div class="chart-container">
+                            <canvas id="responseTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Rate Chart -->
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Error Rates (%)</h5>
+                        <div class="chart-container">
+                            <canvas id="errorRateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Insights Card -->
+            <div class="col-md-12 mb-4">
+                <div class="card metric-card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-robot me-2"></i>AI Insights
+                            <span class="badge bg-primary ms-2">Powered by OpenAI</span>
+                        </h5>
+                        <div id="aiInsights" class="mt-3">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="analysis-section">
+                                        <h6 class="text-muted mb-3">System Analysis</h6>
+                                        <div id="aiAnalysis" class="mb-4">
+                                            <div class="placeholder-glow">
+                                                <span class="placeholder col-12"></span>
+                                                <span class="placeholder col-12"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="recommendations-section">
+                                        <h6 class="text-muted mb-3">Recommendations</h6>
+                                        <ul id="aiRecommendations" class="list-unstyled">
+                                            <li class="placeholder-glow">
+                                                <span class="placeholder col-12"></span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts -->
+            <div class="col-md-12">
+                <div class="card metric-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Recent Alerts</h5>
+                        <div id="alertsList" class="mt-3">
+                            <!-- Alerts will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefresh = true;
+        let refreshInterval;
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 500
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        };
+
+        // Initialize charts
+        const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+        const errorRateCtx = document.getElementById('errorRateChart').getContext('2d');
+
+        const responseTimeChart = new Chart(responseTimeCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: chartOptions
+        });
+
+        const errorRateChart = new Chart(errorRateCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: chartOptions
+        });
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            document.getElementById('refreshStatus').textContent = `Auto-refresh: ${autoRefresh ? 'ON' : 'OFF'}`;
+            if (autoRefresh) {
+                updateDashboard();
+                refreshInterval = setInterval(updateDashboard, 5000);
+            } else {
+                clearInterval(refreshInterval);
+            }
+        }
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                
+                // Update system status
+                updateSystemStatus(data.status);
+                
+                // Update metrics
+                updateMetrics(data.metrics);
+                
+                // Update charts
+                updateCharts(data.metrics);
+                
+                // Update alerts
+                updateAlerts(data);
+                
+                // Update last refresh time
+                document.getElementById('lastUpdate').textContent = 
+                    `Last updated: ${new Date().toLocaleTimeString()}`;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function updateSystemStatus(status) {
+            const elasticStatus = document.getElementById('elasticStatus');
+            const snsStatus = document.getElementById('snsStatus');
+            
+            elasticStatus.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="status-indicator me-2 ${status.elasticsearch ? 'bg-success' : 'bg-warning'}"></div>
+                    Elasticsearch: 
+                    <span class="badge ${status.elasticsearch ? 'bg-success' : 'bg-warning'} ms-2">
+                        ${status.elasticsearch ? 'Connected' : 'Using Fallback'}
+                    </span>
+                </div>`;
+            
+            snsStatus.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="status-indicator me-2 ${status.sns ? 'bg-success' : 'bg-warning'}"></div>
+                    AWS SNS: 
+                    <span class="badge ${status.sns ? 'bg-success' : 'bg-warning'} ms-2">
+                        ${status.sns ? 'Connected' : 'Using Fallback'}
+                    </span>
+                </div>`;
+        }
+
+        function updateMetrics(metrics) {
+            const requestRate = document.getElementById('requestRate');
+            const errorRate = document.getElementById('errorRate');
+            
+            const lastIndex = metrics.timestamps.length - 1;
+            const currentErrorRate = metrics.error_rates[lastIndex] || 0;
+            
+            requestRate.querySelector('.metric-value').textContent = 
+                `${metrics.request_rate || 0}/min`;
+            
+            errorRate.querySelector('.metric-value').textContent = 
+                `${currentErrorRate.toFixed(1)}%`;
+            
+            errorRate.classList.remove('text-success', 'text-warning', 'text-danger');
+            if (currentErrorRate > 5) {
+                errorRate.classList.add('text-danger');
+            } else if (currentErrorRate > 1) {
+                errorRate.classList.add('text-warning');
+            } else {
+                errorRate.classList.add('text-success');
+            }
+        }
+
+        function updateCharts(metrics) {
+            // Update response time chart
+            responseTimeChart.data.labels = metrics.timestamps;
+            responseTimeChart.data.datasets[0].data = metrics.response_times;
+            responseTimeChart.update();
+
+            // Update error rate chart
+            errorRateChart.data.labels = metrics.timestamps;
+            errorRateChart.data.datasets[0].data = metrics.error_rates;
+            errorRateChart.update();
+        }
+
+        function updateAlerts(data) {
+            const alertsList = document.getElementById('alertsList');
+            const aiInsights = document.getElementById('aiInsights');
+            const aiAnalysis = document.getElementById('aiAnalysis');
+            const aiRecommendations = document.getElementById('aiRecommendations');
+            
+            // Update alerts list
+            alertsList.innerHTML = '';
+            
+            if (!data.alerts || data.alerts.length === 0) {
+                alertsList.innerHTML = `
+                    <div class="text-muted text-center py-3">
+                        No recent alerts
+                    </div>`;
+                return;
+            }
+
+            // Update alerts
+            data.alerts.forEach(alert => {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-card alert-${alert.severity}`;
+                alertDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="alert-heading">${alert.title}</h6>
+                            <p class="mb-0">${alert.message}</p>
+                        </div>
+                        <small class="text-muted">
+                            ${new Date(alert.timestamp).toLocaleString()}
+                        </small>
+                    </div>`;
+                alertsList.appendChild(alertDiv);
+            });
+
+            // Update AI insights if available
+            if (data.ai_insights) {
+                // Update analysis
+                aiAnalysis.innerHTML = `
+                    <div class="analysis-content">
+                        ${data.ai_insights.analysis.split('\n').map(line => 
+                            `<p class="mb-2">${line}</p>`
+                        ).join('')}
+                    </div>`;
+
+                // Update recommendations
+                aiRecommendations.innerHTML = data.ai_insights.recommendations
+                    .map(rec => `
+                        <li class="mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                                <span>${rec}</span>
+                            </div>
+                        </li>
+                    `).join('');
+
+                // Update severity indicator
+                const severityClass = {
+                    info: 'text-info',
+                    warning: 'text-warning',
+                    danger: 'text-danger'
+                }[data.ai_insights.severity] || 'text-info';
+
+                aiInsights.querySelector('.card-title').classList.remove(
+                    'text-info', 'text-warning', 'text-danger'
+                );
+                aiInsights.querySelector('.card-title').classList.add(severityClass);
+            } else {
+                // Show placeholder if no AI insights
+                aiAnalysis.innerHTML = `
+                    <div class="text-muted">
+                        AI analysis not available
+                    </div>`;
+                aiRecommendations.innerHTML = '';
+            }
+        }
+
+        // Initial update and set interval
+        updateDashboard();
+        refreshInterval = setInterval(updateDashboard, 5000);
+    </script>
+</body>
+</html>
